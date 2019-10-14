@@ -1,0 +1,38 @@
+model {
+	
+	# conditions
+	for (k in 1:K) {
+		
+		ggrp[k] ~ dbeta(hypggrpmode * (hypggrpconc - 2) + 1, (1 - hypggrpmode)*(hypggrpconc - 2) + 1)
+		lgrp[k] ~ dbeta(hyplgrpmode * (hyplgrpconc - 2) + 1, (1 - hyplgrpmode)*(hyplgrpconc - 2) + 1)
+		ugrp[k] ~ dbeta(hypugrpmode  * (hypugrpconc - 2) + 1, (1 - hypugrpmode)*(hypugrpconc - 2) + 1)
+		vgrp[k] ~ dgamma(hypvgrpmean / (hypvgrpvar / hypvgrpmean), hypvgrpvar / hypvgrpmean)
+		
+		ggrpconc[k] ~ dpois(hypggrpconclambda)
+		lgrpconc[k] ~ dpois(hyplgrpconclambda)
+		ugrpconc[k] ~ dpois(hypugrpconclambda)
+		vgrpvar[k] ~ dgamma(hypvgrpvarmean / (hypvgrpvarvar / hypvgrpvarmean), hypvgrpvarvar / hypvgrpvarmean)
+		
+		
+		# subjects
+		for (i in 1:N) {
+			g[i, k] ~ dbeta(ggrp[k] * (ggrpconc[k] - 2) + 1, (1 - ggrp[k])*(ggrpconc[k] - 2) + 1)
+			l[i, k] ~ dbeta(lgrp[k] * (lgrpconc[k] - 2) + 1, (1 - lgrp[k])*(lgrpconc[k] - 2) + 1)
+			u[i, k] ~ dbeta(ugrp[k] * (ugrpconc[k] - 2) + 1, (1 - ugrp[k])*(ugrpconc[k] - 2) + 1)
+			v[i, k] ~ dgamma(vgrp[k] / (vgrpvar[k] / vgrp[k]), vgrpvar[k] / vgrp[k])
+			
+			obsnoise[i, k] ~ dgamma(hypobsnoisemean / (hypobsnoisevar / hypobsnoisemean), hypobsnoisevar / hypobsnoisemean)
+		
+			# trials
+			for (j in 1:M) {
+				# Observation mean is a logistic function of contrast, steepness and offset
+				# Dirty if-else hack because qnorm is implemented strangely.
+				mu[i, j, k] <- g[i, k] + (1 - g[i, k] - l[i, k]) * ifelse(j==M, 1.0, qnorm(c[j], u[i, k], 1 / v[i, k]))
+				# Obsrved dominance is distributed around that mean
+				d[i, j, k] ~ dnorm( mu[i, j, k], 1 / obsnoise[i, k] )
+			}	
+		}
+	}	
+	ugrpdiff <- ugrp[2] - ugrp[1]
+	vgrpdiff <- vgrp[2] - vgrp[1]
+}

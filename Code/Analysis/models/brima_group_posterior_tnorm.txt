@@ -1,0 +1,87 @@
+model {
+	# g = f(0.0)
+	# l = 1-f(1.0)
+	# u => f(x)=0.5, roughly at 0.5, mean of normal
+	# v => slope, roughly around 0.1 (note rescaling of c from [0,1] to [0, 100]), standard deviation of normal
+	
+	# Note: shape & rate parametrization in JAGS! ==> dgamma(a,b), mean = a/b, var = a/b^2, i.e. a = mu^2 / var, b = mu / var
+	
+	
+	# hyperparameters
+	
+	# group-level g
+	g_grp_tau <- 1 / g_grp_sd^2
+	
+	# group-level l
+	l_grp_tau <- 1 / l_grp_sd^2
+	
+	# group-level u
+	u_grp_tau <- 1 / u_grp_sd^2
+	
+	# group-level v
+	v_grp_gam_shape <- v_grp_mean^2 / v_grp_sd^2
+	v_grp_gam_rate <- v_grp_mean / v_grp_sd^2
+	
+	# everything below is replaced by vague priors, i.e. gamma(0.001, 0.001)
+	
+	# variance of subjects around group mean g
+	#g_var_gam_shape <- g_var_mean^2 / g_var_sd^2
+	#g_var_gam_rate <- g_var_mean / g_var_sd^2
+		
+	# variance of subjects around group mean l 
+	#l_var_gam_shape <- l_var_mean^2 / l_var_sd^2
+	#l_var_gam_rate <- l_var_mean / l_var_sd^2
+		
+	# variance of subjects around group mean u
+	#u_var_gam_shape <- u_var_mean^2 / u_var_sd^2
+	#u_var_gam_rate <- u_var_mean / u_var_sd^2
+	
+	# variance of subjects around group mean v
+	#v_var_gam_shape <- v_var_mean^2 / v_var_sd^2
+	#v_var_gam_rate <- v_var_mean / v_var_sd^2
+	
+	#obs_precision_mean <- 1 / noise_mean
+	#obs_precision_sd <- 1 / noise_sd
+	#obs_prec_gam_shape <- obs_precision_mean^2 / obs_precision_sd^2
+	#obs_prec_gam_rate <- obs_precision_mean / obs_precision_sd^2
+	
+	
+	for (i in 1:N) {
+		obs_tau[i] ~ dgamma(0.001, 0.001) 
+		obs_sd[i] <- 1 / sqrt(obs_tau[i])
+	}
+	
+	
+	for (k in 1:K) {
+		
+		g_grp[k] ~ dnorm(g_grp_mean, g_grp_tau)T(0.0, 1.0)
+		l_grp[k] ~ dnorm(l_grp_mean, l_grp_tau)T(0.0, 1.0)
+		u_grp[k] ~ dnorm(u_grp_mean, u_grp_tau)T(0.0, 1.0)
+		v_grp[k] ~ dgamma(v_grp_gam_shape, v_grp_gam_rate)
+		
+		g_var[k] ~ dgamma(0.001, 0.001)
+		l_var[k] ~ dgamma(0.001, 0.001)
+		u_var[k] ~ dgamma(0.001, 0.001)
+		v_var[k] ~ dgamma(0.001, 0.001)
+		
+		v_gam_shape[k] <- v_grp[k]^2 / v_var[k]
+		v_gam_rate[k] <- v_grp[k] / v_var[k]
+		
+		# subjects
+		for (i in 1:N) {
+			g[i, k] ~ dnorm(g_grp[k], 1 / g_var[k])T(0.0, 1.0)
+			l[i, k] ~ dnorm(l_grp[k], 1 / l_var[k])T(0.0, 1.0)
+			u[i, k] ~ dnorm(u_grp[k], 1 / u_var[k])T(0.0, 1.0)
+			v[i, k] ~ dgamma(v_gam_shape[k], v_gam_rate[k])
+			
+		
+			# trials
+			for (j in 1:M) {
+				# Observation mean is a logistic function of contrast, steepness and offset				
+				mu[i, j, k] <- g[i, k] + (1 - g[i, k] - l[i, k]) * pnorm(c[j], u[i, k], 1 / v[i, k]^2)
+				# Obsrved dominance is distributed around that mean
+				d[i, j, k] ~ dnorm( mu[i, j, k], obs_tau[i] )
+			}
+		}
+	}	
+}

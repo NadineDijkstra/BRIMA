@@ -1,0 +1,31 @@
+model {
+	# priors
+	
+	# We sample the *precision* of the observation noise, but we want to get the *variance*
+	domprec ~ dgamma(0.1, 0.1)
+	dominance_noise <- 1 / domprec
+	
+	# Hyperparameters for gamma distribution of steepness
+	a <- c(steepness1[1], steepness2[1])
+	b <- c(steepness1[2], steepness2[2])
+	
+	# Hyperparameters for normal distribution of offset
+	
+	prior_sigma <- offsetvariance
+	prior_tau <- 1 / prior_sigma
+	
+	# likelihood	
+	for (k in 1:K) {
+		phi[k] ~ dgamma(a[k], b[k])
+		tau[k] ~ dnorm(offsetmu[k], prior_tau)
+		
+		#for (j in 1:m) {
+			# Observation mean is a logistic function of contrast, steepness and offset
+		#	mu[j,k] <- 1 / (1 + exp(-phi[k] * (c[j] - tau[k])))
+			# Obsrved dominance is distributed around that mean
+		#	d[j,k] ~ dnorm( mu[j,k], domprec)
+		#}		
+	}	
+	steepness_diff <- phi[2] - phi[1]
+	offset_diff <- tau[2] - tau[1]
+}

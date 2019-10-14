@@ -1,0 +1,20 @@
+function plot_WH_fit(samples, c, d, subject)
+
+
+gausscdf = @(x, g, l, u, v) g+(1-g-l)*normcdf(x, u, v);
+
+hold on;
+
+if isempty(subject)
+    
+    gsamples = reshape(samples.g
+    
+    g_mean = samples.g
+    
+    
+    
+end
+
+function [mean, ub, lb] = get_stats(samples, param)
+
+samples_res = reshape(samples.(param), []
